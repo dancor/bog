@@ -1,0 +1,126 @@
+#!/usr/bin/env python
+
+from optparse import OptionParser
+import numpy as npy
+import sys
+import random as rnd
+import trie
+
+usage = './bog'
+opt_p = OptionParser(usage)
+opt_p.add_option('-d', '--dict')
+opt_p.add_option('-i', '--inp', action='store_true')
+opt_p.add_option('-n', '--num')
+opt_p.add_option('-q', '--quiet', action='store_true')
+(opts, args) = opt_p.parse_args()
+if args:
+    print 'usage:', usage
+    sys.exit(-1)
+
+if opts.num:
+    n = int(opts.num)
+else:
+    n = 4
+
+if opts.inp:
+    n = None
+    b = []
+    while True:
+        l = raw_input()
+        l = l.split(',')
+        my_n = len(l)
+        if not my_n or n and n != my_n:
+            print >> sys.stderr, 'invalid input'
+            sys.exit(-1)
+        if not n:
+            n = my_n
+        b.append(l)
+        if len(b) >= n:
+            break
+    b = npy.array(b)
+    opts.quiet = True
+else:
+    dice = [
+        ['t', 's', 's', 'e', 'i', 'o'],
+        ['d', 'i', 't', 's', 't', 'y'],
+        ['h', 'i', 'm', 'n', 'qu', 'u'],
+        ['h', 'n', 'w', 'e', 'g', 'e'],
+        ['e', 'v', 'd', 'l', 'r', 'y'],
+        ['t', 'w', 'v', 'h', 'e', 'r'],
+        ['b', 'o', 'b', 'a', 'j', 'o'],
+        ['t', 'o', 't', 'o', 'w', 'a'],
+        ['d', 'i', 'l', 'r', 'e', 'x'],
+        ['o', 'p', 'a', 'h', 's', 'c'],
+        ['l', 'e', 't', 't', 'r', 'y'],
+        ['e', 'n', 'u', 's', 'i', 'e'],
+        ['o', 'u', 'i', 'c', 'm', 't'],
+        ['k', 'a', 'f', 'p', 's', 'f'],
+        ['z', 'h', 'n', 'r', 'n', 'l'],
+        ['e', 'n', 'a', 'g', 'a', 'e'],
+        ]
+
+    n2 = n ** 2
+    b = npy.array(rnd.sample([rnd.choice(die) for die in dice], 
+        n2)).reshape(n, n)
+    print b
+
+if not opts.quiet:
+    print 'loading dict'
+dFN = opts.dict
+if not dFN:
+    dFN = '/usr/share/dict/scrabble'
+dF = file(dFN)
+d = trie.Trie()
+while True:
+    r = dF.readline()
+    if not r:
+        break
+    r = r[:-1]
+    if len(r) < 4:
+        continue
+    d.add(r.lower())
+if not opts.quiet:
+    print 'loaded dict'
+
+def tryGetWds(b, n, y, x, s, d, w):
+    if b[y][x] == '.':
+        return
+    b2 = npy.array(b)
+    s += b2[y][x]
+    b2[y][x] = '.'
+    getWds(b2, n, y, x, s, d, w)
+
+def getWds(b, n, y, x, s, d, w):
+    r = d.isWd(s)
+    if r == None:
+        return
+    if r:
+        w.add(s)
+    if x > 0:
+        tryGetWds(b, n, y, x - 1, s, d, w)
+    if x < n - 1:
+        tryGetWds(b, n, y, x + 1, s, d, w)
+    if y > 0:
+        tryGetWds(b, n, y - 1, x, s, d, w)
+        if x > 0:
+            tryGetWds(b, n, y - 1, x - 1, s, d, w)
+        if x < n - 1:
+            tryGetWds(b, n, y - 1, x + 1, s, d, w)
+    if y < n - 1:
+        tryGetWds(b, n, y + 1, x, s, d, w)
+        if x > 0:
+            tryGetWds(b, n, y + 1, x - 1, s, d, w)
+        if x < n - 1:
+            tryGetWds(b, n, y + 1, x + 1, s, d, w)
+
+w = set()
+for y in xrange(n):
+    for x in xrange(n):
+        b2 = npy.array(b)
+        s = b2[y][x]
+        b2[y][x] = '.'
+        getWds(b2, n, y, x, s, d, w)
+if not opts.quiet:
+    print 'Press enter to see all legal words'
+    raw_input()
+print '\n'.join(w)
